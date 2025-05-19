@@ -1,0 +1,31 @@
+# Example variables for OSPF configuration template
+hostname: Router1
+process_id: 10
+router_id: 10.0.0.1
+area: 0
+
+# Interface definitions
+interfaces:
+  - name: GigabitEthernet0/0
+    description: Connection to Router2
+    ip_address: 192.168.1.1
+    subnet_mask: 255.255.255.0
+    area: 0
+    network_type: broadcast
+    
+  - name: GigabitEthernet0/1
+    description: Connection to Router3
+    ip_address: 192.168.2.1
+    subnet_mask: 255.255.255.0
+    area: 0
+    network_type: broadcast
+
+# Network statements
+networks:
+  - address: 192.168.1.0
+    wildcard: 0.0.0.255
+    area: 0
+  - address: 192.168.2.0
+    wildcard: 0.0.0.255
+    area: 0
+

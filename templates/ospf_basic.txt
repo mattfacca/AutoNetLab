@@ -1,0 +1,49 @@
+! Basic OSPF Configuration Template
+! Variables:
+!   {hostname} - Device hostname
+!   {process_id} - OSPF process ID
+!   {router_id} - Router ID in IP format
+!   {interfaces} - List of interfaces to enable OSPF on
+!   {area} - OSPF area number
+
+! Basic device configuration
+hostname {hostname}
+!
+! Loopback interface for router ID
+interface Loopback0
+ ip address {router_id} 255.255.255.255
+ no shutdown
+!
+! Interface configurations
+{%- for interface in interfaces %}
+interface {interface.name}
+ description {interface.description}
+ ip address {interface.ip_address} {interface.subnet_mask}
+ ip ospf {process_id} area {interface.area|default(area)}
+ ip ospf network {interface.network_type|default("broadcast")}
+ no shutdown
+!
+{%- endfor %}
+!
+! OSPF process configuration
+router ospf {process_id}
+ router-id {router_id}
+ auto-cost reference-bandwidth 10000
+ passive-interface default
+{%- for interface in interfaces %}
+ no passive-interface {interface.name}
+{%- endfor %}
+!
+{%- for network in networks %}
+ network {network.address} {network.wildcard} area {network.area|default(area)}
+{%- endfor %}
+!
+! OSPF timers and other parameters
+router ospf {process_id}
+ timers throttle spf 50 200 5000
+ timers throttle lsa 50 200 5000
+ timers lsa arrival 50
+ log-adjacency-changes detail
+!
+! End of OSPF configuration
+

@@ -1,0 +1,138 @@
+# Example Network Topology for AutoNetLab
+name: "OSPF Triangle Topology"
+description: "Three Cisco routers in a triangle topology running OSPF"
+version: "1.0"
+
+# Devices in the topology
+devices:
+  Router1:
+    type: "cisco_ios"
+    management:
+      ip: "192.168.100.1"
+      username: "admin"
+      password: "cisco123"
+      enable_password: "cisco123"
+    config_template: "ospf_basic.txt"
+    template_variables:
+      hostname: "Router1"
+      process_id: 10
+      router_id: "10.0.0.1"
+      area: 0
+      interfaces:
+        - name: "GigabitEthernet0/0"
+          description: "Connection to Router2"
+          ip_address: "192.168.1.1"
+          subnet_mask: "255.255.255.0"
+          area: 0
+          network_type: "broadcast"
+        - name: "GigabitEthernet0/1"
+          description: "Connection to Router3"
+          ip_address: "192.168.2.1"
+          subnet_mask: "255.255.255.0"
+          area: 0
+          network_type: "broadcast"
+      networks:
+        - address: "192.168.1.0"
+          wildcard: "0.0.0.255"
+          area: 0
+        - address: "192.168.2.0"
+          wildcard: "0.0.0.255"
+          area: 0
+
+  Router2:
+    type: "cisco_ios"
+    management:
+      ip: "192.168.100.2"
+      username: "admin"
+      password: "cisco123"
+      enable_password: "cisco123"
+    config_template: "ospf_basic.txt"
+    template_variables:
+      hostname: "Router2"
+      process_id: 10
+      router_id: "10.0.0.2"
+      area: 0
+      interfaces:
+        - name: "GigabitEthernet0/0"
+          description: "Connection to Router1"
+          ip_address: "192.168.1.2"
+          subnet_mask: "255.255.255.0"
+          area: 0
+          network_type: "broadcast"
+        - name: "GigabitEthernet0/1"
+          description: "Connection to Router3"
+          ip_address: "192.168.3.1"
+          subnet_mask: "255.255.255.0"
+          area: 0
+          network_type: "broadcast"
+      networks:
+        - address: "192.168.1.0"
+          wildcard: "0.0.0.255"
+          area: 0
+        - address: "192.168.3.0"
+          wildcard: "0.0.0.255"
+          area: 0
+
+  Router3:
+    type: "cisco_ios"
+    management:
+      ip: "192.168.100.3"
+      username: "admin"
+      password: "cisco123"
+      enable_password: "cisco123"
+    config_template: "ospf_basic.txt"
+    template_variables:
+      hostname: "Router3"
+      process_id: 10
+      router_id: "10.0.0.3"
+      area: 0
+      interfaces:
+        - name: "GigabitEthernet0/0"
+          description: "Connection to Router1"
+          ip_address: "192.168.2.2"
+          subnet_mask: "255.255.255.0"
+          area: 0
+          network_type: "broadcast"
+        - name: "GigabitEthernet0/1"
+          description: "Connection to Router2"
+          ip_address: "192.168.3.2"
+          subnet_mask: "255.255.255.0"
+          area: 0
+          network_type: "broadcast"
+      networks:
+        - address: "192.168.2.0"
+          wildcard: "0.0.0.255"
+          area: 0
+        - address: "192.168.3.0"
+          wildcard: "0.0.0.255"
+          area: 0
+
+# Physical connections between devices
+connections:
+  - name: "Router1-Router2"
+    type: "ethernet"
+    endpoints:
+      - device: "Router1"
+        interface: "GigabitEthernet0/0"
+      - device: "Router2"
+        interface: "GigabitEthernet0/0"
+    subnet: "192.168.1.0/24"
+  
+  - name: "Router1-Router3"
+    type: "ethernet"
+    endpoints:
+      - device: "Router1"
+        interface: "GigabitEthernet0/1"
+      - device: "Router3"
+        interface: "GigabitEthernet0/0"
+    subnet: "192.168.2.0/24"
+  
+  - name: "Router2-Router3"
+    type: "ethernet"
+    endpoints:
+      - device: "Router2"
+        interface: "GigabitEthernet0/1"
+      - device: "Router3"
+        interface: "GigabitEthernet0/1"
+    subnet: "192.168.3.0/24"
+
