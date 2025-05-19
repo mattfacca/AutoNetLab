@@ -1,0 +1,206 @@
+# Custodia DNS Firewall Configuration Template
+# This template defines a secure DNS resolver with blacklisting, whitelisting, and DoH capabilities
+
+# =============================================================================
+# DNS Resolver Base Configuration
+# =============================================================================
+resolver:
+  # Primary and secondary upstream DNS servers
+  # These are the servers Custodia will forward requests to if not blocked/cached
+  upstream_servers:
+    - name: "Primary DNS"
+      address: "8.8.8.8"
+      port: 53
+      protocol: "udp"  # udp or tcp
+      
+    - name: "Secondary DNS"
+      address: "1.1.1.1"
+      port: 53
+      protocol: "udp"
+      
+  # DNS cache settings
+  cache:
+    enabled: true
+    max_size: 10000         # Maximum number of entries in cache
+    min_ttl: 60             # Minimum time to live in seconds
+    max_ttl: 86400          # Maximum time to live in seconds (1 day)
+    prefetch_threshold: 10  # Prefetch records when TTL is less than this value
+    
+  # DNS server security parameters
+  security:
+    dnssec_validation: "yes"  # Enable DNSSEC validation
+    qname_minimization: true  # Minimize data sent in DNS queries for increased privacy
+    rate_limiting:
+      enabled: true
+      requests_per_second: 20
+      window_size: 5  # seconds
+    refuse_any_queries: true  # Refuse DNS ANY queries (often used in amplification attacks)
+
+# =============================================================================
+# DNS-over-HTTPS (DoH) Client Configuration
+# =============================================================================
+doh_client:
+  enabled: true
+  providers:
+    - name: "Cloudflare"
+      url: "https://cloudflare-dns.com/dns-query"
+      bootstrap_ip: "1.1.1.1"
+      
+    - name: "Google"
+      url: "https://dns.google/dns-query"
+      bootstrap_ip: "8.8.8.8"
+      
+  preferred_provider: "Cloudflare"  # Name must match one of the providers above
+  timeout: 5  # seconds
+  
+# =============================================================================
+# Blacklist and Whitelist Configuration
+# =============================================================================
+filtering:
+  enabled: true
+  
+  blacklist:
+    files:
+      - path: "/etc/custodia/blacklists/malicious_domains.txt"
+        description: "Known malicious domains"
+        
+      - path: "/etc/custodia/blacklists/advertising.txt"
+        description: "Advertisement domains"
+        enabled: true
+        
+      - path: "/etc/custodia/blacklists/trackers.txt"
+        description: "Tracking domains"
+        enabled: true
+        
+    # Default blocked domains (always blocked regardless of blacklist files)
+    default_blocked:
+      - "malware-domain.example"
+      - "phishing-site.example"
+      
+    # Regular expression patterns to block
+    regex_patterns:
+      - pattern: "^ads[0-9]*\\."
+        description: "Ad servers with numeric suffixes"
+        
+    update:
+      automatic: true
+      interval: 86400  # Update interval in seconds (1 day)
+      urls:
+        - url: "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
+          format: "hosts"
+          enabled: true
+          
+        - url: "https://urlhaus.abuse.ch/downloads/text/"
+          format: "text"
+          enabled: true
+  
+  whitelist:
+    files:
+      - path: "/etc/custodia/whitelists/allowed_domains.txt"
+        description: "Explicitly allowed domains"
+        
+    # Default allowed domains (always allowed, overrides blacklists)
+    default_allowed:
+      - "safe-service.example"
+      - "necessary-cdn.example"
+      
+    # Custom entries for specific lab scenarios
+    lab_exceptions:
+      - name: "internal_services"
+        domains:
+          - "lab.local"
+          - "*.lab.local"
+        description: "Internal lab services that should never be blocked"
+      
+# =============================================================================
+# Logging Configuration
+# =============================================================================
+logging:
+  # Query logging
+  query_log:
+    enabled: true
+    file: "/var/log/custodia/query.log"
+    format: "combined"  # combined, standard, or json
+    retention:
+      count: 7    # Number of log files to keep
+      size: 50    # Maximum size in MB before rotation
+      
+  # Block event logging
+  block_log:
+    enabled: true
+    file: "/var/log/custodia/blocked.log"
+    include_reason: true  # Include which blacklist or rule caused the block
+    
+  # Performance metrics logging
+  metrics:
+    enabled: true
+    interval: 300  # seconds between metrics logging
+    file: "/var/log/custodia/metrics.log"
+    include:
+      - "cache_hits"
+      - "cache_misses"
+      - "blocked_queries"
+      - "upstream_latency"
+      - "query_count"
+      
+  # Syslog integration
+  syslog:
+    enabled: false
+    facility: "daemon"
+    level: "info"  # debug, info, notice, warning, error
+    
+# =============================================================================
+# DNS-over-HTTPS (DoH) Server Configuration
+# =============================================================================
+doh_server:
+  enabled: true
+  
+  # Server listen settings
+  listen:
+    - address: "0.0.0.0"
+      port: 443
+      
+  # TLS configuration
+  tls:
+    cert_file: "/etc/custodia/certs/server.crt"
+    key_file: "/etc/custodia/certs/server.key"
+    min_version: "TLS1.2"
+    ciphersuites:
+      - "TLS_AES_128_GCM_SHA256"
+      - "TLS_AES_256_GCM_SHA384"
+      - "TLS_CHACHA20_POLY1305_SHA256"
+    
+  # DoH specific settings
+  path: "/dns-query"  # URI path for DoH requests
+  compression: true   # Enable response compression
+  
+  # Access control for DoH server
+  access_control:
+    allow_from:
+      - "192.168.0.0/16"  # Allow internal networks
+      - "10.0.0.0/8"
+    
+# =============================================================================
+# Advanced Configuration
+# =============================================================================
+advanced:
+  thread_count: 4        # Number of worker threads
+  max_concurrent: 2048   # Maximum concurrent DNS queries
+  tcp_idle_timeout: 30   # Seconds before closing idle TCP connections
+  
+  # Local zone overrides
+  local_zones:
+    - zone: "lab.local"
+      type: "transparent"  # Possible values: deny, refuse, static, transparent, typetransparent, redirect, inform, always_transparent, always_refuse, always_nxdomain
+      
+    - zone: "test.internal"
+      type: "static"
+      records:
+        - name: "server1.test.internal"
+          type: "A"
+          value: "192.168.1.10"
+          
+        - name: "server2.test.internal"
+          type: "A"
+          value: "192.168.1.11"
+
